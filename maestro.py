@@ -85,6 +85,7 @@ from _config_ import _MQTT_user
 from _config_ import _MQTT_pass
 
 MQTT_MAESTRO = {}
+MQTT_MAESTRO2 = {}
 
 logger.info('Lancement du deamon')
 logger.info('Anthony L. 2019')
@@ -97,13 +98,12 @@ def on_connect_mqtt(client, userdata, flags, rc):
 def on_message_mqtt(client, userdata, message):
 	logger.info('Message MQTT reçu : ' + str(message.payload.decode()))
 	cmd = message.payload.decode().split(",")
-        if cmd[0] < 100:
+        if int(cmd[0]) <= 100:
             if cmd[0] == "42":
 		    cmd[1]=(int(cmd[1])*2)
 	    Message_MQTT.empile("C|WriteParametri|"+cmd[0]+"|"+str(cmd[1]))
         else:
             Message_MQTT.empile("C|WriteBancaDati|"+cmd[0]+"|"+str(cmd[1])+"|"+str(cmd[2]))
-        
         logger.info('Contenu Pile Message_MQTT : ' + str(Message_MQTT.copiepile()))
 
 def secTOdhms(nb_sec):
@@ -115,25 +115,52 @@ def secTOdhms(nb_sec):
 def on_message(ws, message):
 	logger.info('Message sur le serveur websocket reçu : ' + str(message))
 	from _data_ import RecuperoInfo
-	for i in range(0,len(message.split("|"))):
-			for j in range(0,len(RecuperoInfo)):
-				if i == RecuperoInfo[j][0]:
-					if len(RecuperoInfo[j]) > 2:
-						for k in range(0,len(RecuperoInfo[j][2])):
-							if int(message.split("|")[i],16) == RecuperoInfo[j][2][k][0]:
-								MQTT_MAESTRO[RecuperoInfo[j][1]] = RecuperoInfo[j][2][k][1]
+        from _data_ import RecuperoParametriExtra
+        logger.info('Taille du message: '+ str(len(message.split("|")))) 
+        if len(message.split("|")) == 60: 
+            for i in range(0,len(message.split("|"))):
+			    for j in range(0,len(RecuperoInfo)):
+				    if i == RecuperoInfo[j][0]:
+					    if len(RecuperoInfo[j]) > 2:
+						    for k in range(0,len(RecuperoInfo[j][2])):
+							    if int(message.split("|")[i],16) == RecuperoInfo[j][2][k][0]:
+								    MQTT_MAESTRO[RecuperoInfo[j][1]] = RecuperoInfo[j][2][k][1]
+                                                                    break
+							    else:
+                                                                    MQTT_MAESTRO[RecuperoInfo[j][1]] = ('Code inconnu :', str(int(message.split("|")[i],16)))
+					    else:
+						    if i == 6 or i == 26 or i == 28:
+							    MQTT_MAESTRO[RecuperoInfo[j][1]] = float(int(message.split("|")[i], 16))/2
+						    elif i >= 37 and i <=42:
+							    MQTT_MAESTRO[RecuperoInfo[j][1]] = secTOdhms(int(message.split("|")[i],16))
+						    else:
+							    MQTT_MAESTRO[RecuperoInfo[j][1]] = int(message.split("|")[i],16)
+        else:
+
+                #logger.info('condition 2 ' + str(len(RecuperoParametriExtra))+' '+str(len(message.split("|"))))
+    
+                for i in range(0,len(message.split("|"))):
+			for j in range(0,len(RecuperoParametriExtra)):
+                               	if i == RecuperoParametriExtra[j][0]:
+                                        if len(RecuperoParametriExtra[j]) > 2:
+                                                #logger.info("test " +str(i))
+						for k in range(0,len(RecuperoParametriExtra[j][2])):
+							if int(message.split("|")[i],16) == RecuperoParametriExtra[j][2][k][0]:
+								MQTT_MAESTRO[RecuperoParametriExtra[j][1]] = RecuperoParametriExtra[j][2][k][1]
 								break
 							else:
-								MQTT_MAESTRO[RecuperoInfo[j][1]] = ('Code inconnu :', str(int(message.split("|")[i],16)))
+								MQTT_MAESTRO[RecuperoParametriExtra[j][1]] = ('Code inconnu :', str(int(message.split("|")[i])))
 					else:
-						if i == 6 or i == 26 or i == 28:
-							MQTT_MAESTRO[RecuperoInfo[j][1]] = float(int(message.split("|")[i], 16))/2
-						
-						elif i >= 37 and i <=42:
-							MQTT_MAESTRO[RecuperoInfo[j][1]] = secTOdhms(int(message.split("|")[i],16))
-						else:
-							MQTT_MAESTRO[RecuperoInfo[j][1]] = int(message.split("|")[i],16)
-	logger.info('Publication sur le topic MQTT ' + str(_MQTT_TOPIC_PUB) + ' le message suivant : ' + str(json.dumps(MQTT_MAESTRO)))
+                                                if i == 1 or i == 2:
+                                                    logger.info("AIR GRANULER HERE"+message.split("|")[i])
+                                                    MQTT_MAESTRO[RecuperoParametriExtra[j][1]] = int(message.split("|")[i])
+                                                else:
+                                                    #logger.info("here 2 "+str(i)+" "+str(j) +" "+ message.split("|")[i])
+				                    MQTT_MAESTRO[RecuperoParametriExtra[j][1]] = message.split("|")[i]
+                                                    #logger.info('Publication sur le topic MQTT 222222  ' + str(_MQTT_TOPIC_PUB) + ' le message suivant : ' + str(json.dumps(MQTT_MAESTRO)))
+
+                logger.info('fin condition 2')
+        logger.info('Publication sur le topic MQTT ' + str(_MQTT_TOPIC_PUB) + ' le message suivant : ' + str(json.dumps(MQTT_MAESTRO)))
 	client.publish(_MQTT_TOPIC_PUB, json.dumps(MQTT_MAESTRO),1)
 
 def on_error(ws, error):
@@ -146,8 +173,13 @@ def on_open(ws):
 	def run(*args):
 		for i in range(_TEMPS_SESSION):
 			time.sleep(_INTERVALLE)
-			if Message_MQTT.pilevide():
+                        if Message_MQTT.pilevide():
 				Message_MQTT.empile("C|RecuperoInfo")
+			cmd = Message_MQTT.depile()
+			logger.info("Envoi de la commande : " + str(cmd))
+			ws.send(cmd)
+			if Message_MQTT.pilevide():
+				Message_MQTT.empile("C|RecuperoParametriExtra")
 			cmd = Message_MQTT.depile()
 			logger.info("Envoi de la commande : " + str(cmd))
 			ws.send(cmd)

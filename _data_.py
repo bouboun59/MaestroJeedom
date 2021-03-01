@@ -165,3 +165,32 @@ RecuperoInfo=[
 	[59,"Température retour"],
 	[60,"Antigele"],
 ]
+
+RecuperoParametriExtra=[
+	[0,"Inconnu"],
+	[1,"Air"],
+	[2,"Granules"],
+	[3,"Inconnu"],
+	[4,"Inconnu"],
+	[5,"Inconnu"],
+	[6,"Inconnu"],
+	[7,"Inconnu"],
+	[8,"Inconnu"],
+	[9,"Inconnu"],
+	[10,"Inconnu"],
+	[11,"Inconnu"],
+	[12,"Inconnu"],
+	[13,"Inconnu"],
+	[14,"Inconnu"],
+	[15,"Inconnu"],
+	[16,"Inconnu"],
+	[17,"Inconnu"],
+	[18,"Inconnu"],
+	[19,"Inconnu"],
+	[20,"Inconnu"],
+	[21,"Inconnu"],
+	[22,"Inconnu"],
+	[23,"Inconnu"],
+	[24,"Inconnu"],
+	
+]
